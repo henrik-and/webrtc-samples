@@ -19,6 +19,8 @@ let openMic = undefined;
 let openCamera = undefined;
 let hasPermission = false;
 
+const prettyJson = (obj) => JSON.stringify(obj, null, 2);
+
 audioOutputSelect.disabled = !('sinkId' in HTMLMediaElement.prototype);
 
 function getDevices() {
@@ -128,17 +130,20 @@ function start() {
     openCamera = undefined;
     openMic = undefined;
   }
-  const constraints = {
+  let constraints = {
     audio: true,
     video: true
   };
   if (hasMic) {
     constraints['audio'] = {deviceId: audioSource ? {exact: audioSource} : undefined};
+    constraints.audio.echoCancellation = {exact: true};
+    constraints.audio.autoGainControl = {exact: true};
+    constraints.audio.noiseSuppression = {exact: true};
   }
   if (hasCamera) {
     constraints['video'] = {deviceId: videoSource ? {exact: videoSource} : undefined};
   }
-  console.log('start', constraints);
+  console.log('start', prettyJson(constraints));
   if (!hasPermission || hasCamera || hasMic) {
     navigator.mediaDevices.getUserMedia(constraints).then(gotStream).catch(handleError);
   }
