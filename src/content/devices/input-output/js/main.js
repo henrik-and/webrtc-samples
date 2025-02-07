@@ -136,9 +136,9 @@ function start() {
   };
   if (hasMic) {
     constraints['audio'] = {deviceId: audioSource ? {exact: audioSource} : undefined};
-    constraints.audio.echoCancellation = {exact: true};
-    constraints.audio.autoGainControl = {exact: true};
-    constraints.audio.noiseSuppression = {exact: true};
+    constraints.audio.echoCancellation = {exact: false};
+    constraints.audio.autoGainControl = {exact: false};
+    constraints.audio.noiseSuppression = {exact: false};
   }
   if (hasCamera) {
     constraints['video'] = {deviceId: videoSource ? {exact: videoSource} : undefined};
