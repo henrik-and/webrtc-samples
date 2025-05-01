@@ -13,15 +13,34 @@ const audioInputSelect = document.querySelector('select#audioSource');
 const audioOutputSelect = document.querySelector('select#audioOutput');
 const videoSelect = document.querySelector('select#videoSource');
 const selectors = [audioInputSelect, audioOutputSelect, videoSelect];
+const videoSizeDiv = document.getElementById('videoSize');
+const videoRateDiv = document.getElementById('videoRate');
+
+
 let hasMic = false;
 let hasCamera = false;
 let openMic = undefined;
 let openCamera = undefined;
 let hasPermission = false;
 
+let oldTimestampMs = 0;
+let oldLocalFrames = 0;
+let localFps = 30;
+
 const prettyJson = (obj) => JSON.stringify(obj, null, 2);
 
 audioOutputSelect.disabled = !('sinkId' in HTMLMediaElement.prototype);
+
+videoElement.addEventListener('loadedmetadata', () => {
+  const width = videoElement.videoWidth;
+  const height = videoElement.videoHeight;
+  videoSizeDiv.innerHTML = `<strong>Video dimensions:</strong> ${width}x${height}px`;
+});
+
+function main() {
+  setTimeout(updateVideoFps, 30);
+  getDevices();
+}
 
 function getDevices() {
   navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
@@ -141,7 +160,12 @@ function start() {
     constraints.audio.noiseSuppression = {exact: false};
   }
   if (hasCamera) {
-    constraints['video'] = {deviceId: videoSource ? {exact: videoSource} : undefined};
+    constraints['video'] = {
+        deviceId: videoSource ? {exact: videoSource} : undefined,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+    };
   }
   console.log('start', prettyJson(constraints));
   if (!hasPermission || hasCamera || hasMic) {
@@ -149,9 +173,35 @@ function start() {
   }
 }
 
+setInterval(() => {
+  if (videoElement.videoWidth) {
+    videoRateDiv.innerHTML = `<strong>Video framerate:</strong> ${localFps.toFixed(1)} fps`;
+  }
+}, 1000);
+
+const updateVideoFps = () => {
+  const now = performance.now();
+  const periodMs = now - oldTimestampMs;
+  oldTimestampMs = now;
+  
+  if (videoElement.getVideoPlaybackQuality()) {
+    let newFps;
+    const newFrames = videoElement.getVideoPlaybackQuality().totalVideoFrames;
+    const framesSinceLast = newFrames - oldLocalFrames;
+    oldLocalFrames = newFrames;
+    if (framesSinceLast >= 0) {
+      newFps = 1000 * framesSinceLast / periodMs;
+      localFps = 0.9 * localFps + 0.1 * newFps;
+    }
+  }
+  
+  setTimeout(updateVideoFps, 30);
+}
+
 audioInputSelect.onchange = start;
 audioOutputSelect.onchange = changeAudioDestination;
 videoSelect.onchange = start;
 navigator.mediaDevices.ondevicechange = getDevices;
 
-getDevices();
+main();
+
